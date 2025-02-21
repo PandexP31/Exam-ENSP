@@ -83,8 +83,3 @@ server <- function(input, output, session) {
 
 # Lancer l'application Shiny
 shinyApp(ui = ui, server = server)
-
-shinylive::export(
-  appdir =".",
-  destdir = "docs"
-)
