@@ -58,7 +58,10 @@ server <- function(input, output, session) {
     p + labs(title = glue("prix: {input$max_price} & color: {input$filter_color}"),
              x = "Carat",
              y = "Prix") +
-      theme_minimal()
+      theme_minimal() + 
+      theme(
+        plot.background = element_rect(fill = "gray98")
+      )
   })
   
   # Tableau interactif avec DT
