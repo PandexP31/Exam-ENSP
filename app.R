@@ -1,51 +1,85 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    https://shiny.posit.co/
-#
-
 library(shiny)
+library(ggplot2)
+library(DT)
 
-# Define UI for application that draws a histogram
+# Interface utilisateur (UI)
 ui <- fluidPage(
-
-    # Application title
-    titlePanel("Old Faithful Geyser Data"),
-
-    # Sidebar with a slider input for number of bins 
-    sidebarLayout(
-        sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
-        ),
-
-        # Show a plot of the generated distribution
-        mainPanel(
-           plotOutput("distPlot")
-        )
+  theme = bs_theme(version = 5, bootswatch = "minty"),
+  titlePanel("Exploration des Diamants"),
+  sidebarLayout(
+    sidebarPanel(
+      radioButtons(inputId = "color_rose", 
+                   label = "Colorier les points en rose ?", 
+                   choices = c("Oui" = TRUE, "Non" = FALSE), 
+                   selected = TRUE),
+      
+      selectInput(inputId = "filter_color", 
+                  label = "Filtrer par couleur :", 
+                  choices = unique(diamonds$color), 
+                  selected = "G"),
+      
+      sliderInput(inputId = "max_price", 
+                  label = "Prix maximum :", 
+                  min = 300, 
+                  max = 20000, 
+                  value = 3444, 
+                  step = 100),
+      
+      # Bouton pour afficher une notification
+      actionButton(inputId = "show_notification", 
+                   label = "Afficher une notification")
+    ),
+    
+    mainPanel(
+      plotOutput(outputId = "scatter_plot"),
+      DTOutput(outputId = "data_table")
     )
+  )
 )
 
-# Define server logic required to draw a histogram
-server <- function(input, output) {
 
-    output$distPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
-
-        # draw the histogram with the specified number of bins
-        hist(x, breaks = bins, col = 'darkgray', border = 'white',
-             xlab = 'Waiting time to next eruption (in mins)',
-             main = 'Histogram of waiting times')
-    })
+server <- function(input, output, session) {
+  filtered_data <- reactive({
+    subset(diamonds, 
+           color == input$filter_color & 
+             price <= input$max_price)
+  })
+  
+  # Nuage de points
+  output$scatter_plot <- renderPlot({
+    p <- ggplot(filtered_data(), aes(x = carat, y = price))
+    
+    if (input$color_rose == TRUE) {
+      p <- p + geom_point(color = "pink", alpha = 0.6)
+    } else {
+      p <- p + geom_point(alpha = 0.6)
+    }
+    
+    p + labs(title = glue("prix: {input$max_price} & color: {input$filter_color}"),
+             x = "Carat",
+             y = "Prix") +
+      theme_minimal() + 
+      theme(
+        plot.background = element_rect(fill = "gray98")
+      )
+  })
+  
+  # Tableau interactif avec DT
+  output$data_table <- renderDT({
+    datatable(filtered_data(), 
+              options = list(pageLength = 10, 
+                             scrollX = TRUE))
+  })
+  
+  # Notification lorsque le bouton est cliqué
+  observeEvent(input$show_notification, {
+    showNotification(
+      paste(glue("prix: {input$max_price}, 
+            color: {input$filter_color}")),
+      type = "message"
+    )
+  })
 }
 
-# Run the application 
+# Lancer l'application Shiny
 shinyApp(ui = ui, server = server)
